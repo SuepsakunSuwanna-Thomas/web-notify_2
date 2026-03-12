@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแจ้งเตือน</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h2>ทดสอบ Web Notification บน Vercel</h2>
+    <button id="notifyBtn">1. เปิดสิทธิ์การแจ้งเตือน</button>
+    <br>
+    <button id="testBtn" style="display:none;">2. ทดสอบส่งข้อความ</button>
+
+    <script>
+        const notifyBtn = document.getElementById('notifyBtn');
+        const testBtn = document.getElementById('testBtn');
+
+        if (Notification.permission === "granted") {
+            notifyBtn.style.display = 'none';
+            testBtn.style.display = 'inline-block';
+        }
+
+        notifyBtn.addEventListener('click', () => {
+            if (!("Notification" in window)) {
+                alert("เบราว์เซอร์นี้ไม่รองรับ");
+                return;
+            }
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    notifyBtn.style.display = 'none';
+                    testBtn.style.display = 'inline-block';
+                    alert("อนุญาตสำเร็จ กดปุ่มทดสอบได้เลย");
+                }
+            });
+        });
+
+        testBtn.addEventListener('click', () => {
+            new Notification('แจ้งเตือนจากระบบ', {
+                body: 'ระบบทำงานสมบูรณ์ ไม่มีปัญหา iframe บล็อก',
+                icon: 'https://cdn-icons-png.flaticon.com/512/1827/1827370.png'
+            });
+        });
+    </script>
+</body>
+</html>
