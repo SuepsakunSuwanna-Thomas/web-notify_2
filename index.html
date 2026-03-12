@@ -3,19 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>รับแจ้งเตือน Web Push</title>
+  <title>ระบบรับแจ้งเตือน</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f0f2f5; }
-    button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #0084ff; color: white; border: none; border-radius: 10px; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px; background-color: #f4f7f6; }
+    .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; }
+    button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 8px; transition: 0.3s; }
+    button:hover { background: #0056b3; }
     #status { margin-top: 20px; font-weight: bold; }
-    #token-display { margin-top: 15px; font-size: 11px; word-break: break-all; color: #666; background: #fff; padding: 10px; border: 1px solid #ddd; display: none; }
+    #token-display { margin-top: 15px; font-size: 11px; word-break: break-all; color: #666; background: #eee; padding: 15px; border-radius: 8px; display: none; max-width: 400px; }
   </style>
 </head>
 <body>
-  <h2>🔔 ระบบลงทะเบียนแจ้งเตือน</h2>
-  <button id="btn-sub" onclick="requestPermission()">เปิดรับแจ้งเตือน</button>
-  <div id="status">สถานะ: รอการกดปุ่ม...</div>
-  <div id="token-display" id="token-display"></div>
+  <div class="card">
+    <h2>🔔 ลงทะเบียนแจ้งเตือน</h2>
+    <p>กดปุ่มเพื่อรับข่าวสารเข้ามือถือหรือคอมพิวเตอร์</p>
+    <button id="btn-sub" onclick="requestPermission()">เปิดรับแจ้งเตือน</button>
+    <div id="status">สถานะ: รอการกดปุ่ม...</div>
+    <div id="token-display"></div>
+  </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
@@ -36,6 +41,7 @@
       document.getElementById('status').innerText = "กำลังขออนุญาต...";
       Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
+          // ลงทะเบียน Service Worker เพื่อให้ทำงานเบื้องหลังได้
           navigator.serviceWorker.register('./firebase-messaging-sw.js').then((reg) => {
             messaging.getToken({ 
               vapidKey: 'BHr6Qr5xBS4QnOGqS7O2ASvZn8OqNYnEN28DOU06MDCZiSuJbtKJ7SRFdGkDOhf1-rz0HOBSUc-lNTjT9JkBk3Q',
@@ -46,13 +52,19 @@
                 document.getElementById('status').style.color = "green";
                 const box = document.getElementById('token-display');
                 box.style.display = "block";
-                box.innerText = "Token: " + token;
+                box.innerText = "คัดลอก Token นี้ไปใช้ใน Code.gs:\n\n" + token;
+                document.getElementById('btn-sub').disabled = true;
               }
             });
           });
+        } else {
+          document.getElementById('status').innerText = "ถูกปฏิเสธการแจ้งเตือน";
+          document.getElementById('status').style.color = "red";
         }
       });
     }
+
+    // ลบ alert ในหน้าเว็บออก เพื่อให้แจ้งเตือนเข้า Notification ของระบบที่เดียว
   </script>
 </body>
 </html>
