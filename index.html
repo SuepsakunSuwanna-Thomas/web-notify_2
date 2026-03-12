@@ -1,49 +1,122 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบแจ้งเตือน</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px; }
-        button { padding: 15px 30px; font-size: 18px; cursor: pointer; margin: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รับแจ้งเตือน Web Push</title>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      text-align: center; 
+      padding: 50px; 
+      background-color: #f9f9f9; 
+    }
+    button { 
+      padding: 15px 30px; 
+      font-size: 18px; 
+      cursor: pointer; 
+      background: #4285F4; 
+      color: white; 
+      border: none; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    }
+    button:disabled { 
+      background: #ccc; 
+      cursor: not-allowed; 
+    }
+    #status { 
+      margin-top: 20px; 
+      font-size: 16px; 
+      font-weight: bold; 
+      color: #333;
+    }
+    #token-display { 
+      margin-top: 15px; 
+      font-size: 12px; 
+      color: #777; 
+      word-break: break-all; 
+      max-width: 500px; 
+      margin-left: auto; 
+      margin-right: auto; 
+    }
+  </style>
 </head>
 <body>
-    <h2>ทดสอบ Web Notification บน Vercel</h2>
-    <button id="notifyBtn">1. เปิดสิทธิ์การแจ้งเตือน</button>
-    <br>
-    <button id="testBtn" style="display:none;">2. ทดสอบส่งข้อความ</button>
+  <h2>ระบบรับการแจ้งเตือน Firebase</h2>
+  <p>กดปุ่มด้านล่างเพื่ออนุญาตรับการแจ้งเตือน</p>
+  
+  <button id="btn-sub" onclick="requestPermission()">🔔 เปิดรับการแจ้งเตือน</button>
+  <div id="status">สถานะ: รอการกดปุ่ม...</div>
+  <div id="token-display"></div>
 
-    <script>
-        const notifyBtn = document.getElementById('notifyBtn');
-        const testBtn = document.getElementById('testBtn');
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
-        if (Notification.permission === "granted") {
-            notifyBtn.style.display = 'none';
-            testBtn.style.display = 'inline-block';
-        }
+  <script>
+    // 1. ข้อมูล Config ของคุณ
+    const firebaseConfig = {
+      apiKey: "AIzaSyASQaUu3QclUqig5Sx7j5ldCFe480TaeDQ",
+      authDomain: "account-b893a.firebaseapp.com",
+      databaseURL: "https://account-b893a-default-rtdb.firebaseio.com",
+      projectId: "account-b893a",
+      storageBucket: "account-b893a.firebasestorage.app",
+      messagingSenderId: "881003637393",
+      appId: "1:881003637393:web:d92682299ec638d50ded30",
+      measurementId: "G-GB9GXV6V86"
+    };
 
-        notifyBtn.addEventListener('click', () => {
-            if (!("Notification" in window)) {
-                alert("เบราว์เซอร์นี้ไม่รองรับ");
-                return;
-            }
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    notifyBtn.style.display = 'none';
-                    testBtn.style.display = 'inline-block';
-                    alert("อนุญาตสำเร็จ กดปุ่มทดสอบได้เลย");
+    // 2. เริ่มต้นระบบ Firebase
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+
+    function updateStatus(text, color) {
+      const el = document.getElementById('status');
+      el.innerText = "สถานะ: " + text;
+      el.style.color = color;
+    }
+
+    function requestPermission() {
+      updateStatus("กำลังขออนุญาต...", "blue");
+      
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          updateStatus("อนุญาตแล้ว กำลังดึง Token...", "orange");
+          
+          // 3. ใช้ VAPID Key ของคุณเพื่อขอ Token
+          messaging.getToken({ vapidKey: 'BHr6Qr5xBS4QnOGqS7O2ASvZn8OqNYnEN28DOU06MDCZiSuJbtKJ7SRFdGkDOhf1-rz0HOBSUc-lNTjT9JkBk3Q' })
+            .then((token) => {
+              if (token) {
+                updateStatus("สำเร็จ! พร้อมรับการแจ้งเตือน", "green");
+                document.getElementById('token-display').innerText = "Token ของคุณคือ:\n" + token;
+                document.getElementById('btn-sub').disabled = true;
+                
+                // (ถ้ายังมีการเชื่อมต่อกับ Google Apps Script ให้โค้ดนี้ทำงาน)
+                if (typeof google !== 'undefined' && google.script) {
+                  google.script.run.saveToken(token);
+                } else {
+                  console.log("ได้ Token แล้ว:", token);
+                  // ตรงนี้คุณสามารถเขียนโค้ดเพื่อยิง Token ไปเก็บที่ Database ของคุณเองได้
                 }
+              } else {
+                updateStatus("ไม่สามารถสร้าง Token ได้", "red");
+              }
+            })
+            .catch((err) => {
+              updateStatus("เกิดข้อผิดพลาด: " + err.message, "red");
+              console.error("Error getting token:", err);
             });
-        });
+        } else {
+          updateStatus("คุณไม่อนุญาตให้ส่งการแจ้งเตือน", "red");
+        }
+      });
+    }
 
-        testBtn.addEventListener('click', () => {
-            new Notification('แจ้งเตือนจากระบบ', {
-                body: 'ระบบทำงานสมบูรณ์ ไม่มีปัญหา iframe บล็อก',
-                icon: 'https://cdn-icons-png.flaticon.com/512/1827/1827370.png'
-            });
-        });
-    </script>
+    // 4. รับข้อความและแสดงผลเมื่อผู้ใช้เปิดหน้าเว็บนี้ค้างไว้
+    messaging.onMessage((payload) => {
+      console.log('ได้รับข้อความ: ', payload);
+      alert("แจ้งเตือนใหม่: " + payload.notification.title + "\n" + payload.notification.body);
+    });
+  </script>
 </body>
 </html>
