@@ -3,58 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>รับแจ้งเตือน Web Push</title>
+  <title>รับการแจ้งเตือน (GitHub Version)</title>
   <style>
-    body { 
-      font-family: sans-serif; 
-      text-align: center; 
-      padding: 50px; 
-      background-color: #f9f9f9; 
-    }
-    button { 
-      padding: 15px 30px; 
-      font-size: 18px; 
-      cursor: pointer; 
-      background: #4285F4; 
-      color: white; 
-      border: none; 
-      border-radius: 8px; 
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-    }
-    button:disabled { 
-      background: #ccc; 
-      cursor: not-allowed; 
-    }
-    #status { 
-      margin-top: 20px; 
-      font-size: 16px; 
-      font-weight: bold; 
-      color: #333;
-    }
-    #token-display { 
-      margin-top: 15px; 
-      font-size: 12px; 
-      color: #777; 
-      word-break: break-all; 
-      max-width: 500px; 
-      margin-left: auto; 
-      margin-right: auto; 
-    }
+    body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f0f4f8; }
+    button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #4285F4; color: white; border: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #status { margin-top: 20px; font-size: 16px; font-weight: bold; color: #333; }
+    #token-box { margin-top: 15px; font-size: 12px; color: #555; word-break: break-all; background: #fff; padding: 15px; border-radius: 5px; border: 1px solid #ddd; display: none; text-align: left; }
   </style>
 </head>
 <body>
-  <h2>ระบบรับการแจ้งเตือน Firebase</h2>
-  <p>กดปุ่มด้านล่างเพื่ออนุญาตรับการแจ้งเตือน</p>
-  
-  <button id="btn-sub" onclick="requestPermission()">🔔 เปิดรับการแจ้งเตือน</button>
+  <h2>🔔 ลงทะเบียนรับการแจ้งเตือน</h2>
+  <button id="btn-sub" onclick="requestPermission()">อนุญาตรับการแจ้งเตือน</button>
   <div id="status">สถานะ: รอการกดปุ่ม...</div>
-  <div id="token-display"></div>
+  <div id="token-box" id="token-display"></div>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
   <script>
-    // 1. ข้อมูล Config ของคุณ
+    // 1. ใส่ Config ของคุณ
     const firebaseConfig = {
       apiKey: "AIzaSyASQaUu3QclUqig5Sx7j5ldCFe480TaeDQ",
       authDomain: "account-b893a.firebaseapp.com",
@@ -66,7 +34,6 @@
       measurementId: "G-GB9GXV6V86"
     };
 
-    // 2. เริ่มต้นระบบ Firebase
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
@@ -81,40 +48,45 @@
       
       Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
-          updateStatus("อนุญาตแล้ว กำลังดึง Token...", "orange");
+          updateStatus("กำลังลงทะเบียนระบบเบื้องหลัง...", "orange");
           
-          // 3. ใช้ VAPID Key ของคุณเพื่อขอ Token
-          messaging.getToken({ vapidKey: 'BHr6Qr5xBS4QnOGqS7O2ASvZn8OqNYnEN28DOU06MDCZiSuJbtKJ7SRFdGkDOhf1-rz0HOBSUc-lNTjT9JkBk3Q' })
-            .then((token) => {
-              if (token) {
-                updateStatus("สำเร็จ! พร้อมรับการแจ้งเตือน", "green");
-                document.getElementById('token-display').innerText = "Token ของคุณคือ:\n" + token;
-                document.getElementById('btn-sub').disabled = true;
+          // 2. บังคับลงทะเบียน Service Worker ด้วยตัวเอง (แก้ปัญหา 404 บน GitHub)
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./firebase-messaging-sw.js')
+              .then(function(registration) {
+                console.log('Service Worker Registered!', registration.scope);
                 
-                // (ถ้ายังมีการเชื่อมต่อกับ Google Apps Script ให้โค้ดนี้ทำงาน)
-                if (typeof google !== 'undefined' && google.script) {
-                  google.script.run.saveToken(token);
+                // 3. ใช้ VAPID Key ของคุณเพื่อขอ Token
+                return messaging.getToken({ 
+                  vapidKey: 'BHr6Qr5xBS4QnOGqS7O2ASvZn8OqNYnEN28DOU06MDCZiSuJbtKJ7SRFdGkDOhf1-rz0HOBSUc-lNTjT9JkBk3Q',
+                  serviceWorkerRegistration: registration
+                });
+              })
+              .then((token) => {
+                if (token) {
+                  updateStatus("ลงทะเบียนสำเร็จ! คัดลอก Token ด้านล่างไปใช้งานได้เลย", "green");
+                  document.getElementById('btn-sub').disabled = true;
+                  
+                  const tokenBox = document.getElementById('token-box');
+                  tokenBox.style.display = "block";
+                  tokenBox.innerHTML = "<b>Token ของคุณคือ:</b><br><br>" + token;
                 } else {
-                  console.log("ได้ Token แล้ว:", token);
-                  // ตรงนี้คุณสามารถเขียนโค้ดเพื่อยิง Token ไปเก็บที่ Database ของคุณเองได้
+                  updateStatus("ไม่สามารถสร้าง Token ได้", "red");
                 }
-              } else {
-                updateStatus("ไม่สามารถสร้าง Token ได้", "red");
-              }
-            })
-            .catch((err) => {
-              updateStatus("เกิดข้อผิดพลาด: " + err.message, "red");
-              console.error("Error getting token:", err);
-            });
+              })
+              .catch((err) => {
+                updateStatus("เกิดข้อผิดพลาด: " + err.message, "red");
+                console.error(err);
+              });
+          }
         } else {
-          updateStatus("คุณไม่อนุญาตให้ส่งการแจ้งเตือน", "red");
+          updateStatus("คุณปฏิเสธการแจ้งเตือน", "red");
         }
       });
     }
 
-    // 4. รับข้อความและแสดงผลเมื่อผู้ใช้เปิดหน้าเว็บนี้ค้างไว้
+    // 4. รับข้อความตอนที่เปิดหน้าเว็บนี้ค้างไว้
     messaging.onMessage((payload) => {
-      console.log('ได้รับข้อความ: ', payload);
       alert("แจ้งเตือนใหม่: " + payload.notification.title + "\n" + payload.notification.body);
     });
   </script>
